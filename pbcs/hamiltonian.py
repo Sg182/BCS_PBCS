@@ -110,7 +110,7 @@ class XXZ:
     below and should be added to the final energy after the AGP iterations.
     """
 
-    def __init__(self, nmo, delta, periodic=False):
+    def __init__(self, nmo, delta, periodic=True):
 
         self.nmo = nmo
         self.nelec = nmo
@@ -134,13 +134,17 @@ class XXZ:
         self.v = vmat
         self.w = delta * vmat
 
+        self.Enuc = delta/4 * nmo
+        if (periodic == False):
+             self.Enuc = self.Enuc - delta/4
+
 
 class J1J2XXZ:
     """
     Anisotropic J1-J2 model
     """
 
-    def __init__(self, nmo, delta, j2, periodic=False):
+    def __init__(self, nmo, delta, j2, periodic=True):
 
         self.nmo = nmo
         self.nelec = nmo
@@ -164,11 +168,15 @@ class J1J2XXZ:
             vmat[j, i] = 0.5 * j2
         if periodic:
             vmat[0, nmo - 1] = vmat[nmo - 1, 0] = 0.5
-            vmat[0, nmo - 2] = vmat[nmo - 2, 0] = vmat[1, nmo - 1] \
-                = vmat[nmo-1, 1] = 0.5 * j2
+            vmat[0, nmo - 2] = vmat[nmo - 2 ,0] = vmat[1, nmo -1] \
+             = vmat[nmo-1, 1] = 0.5 * j2
 
         self.v = vmat
         self.w = delta * vmat
+        self.Enuc = delta/4 * nmo +  j2*(1/4)*2*(1/2)*nmo
+        if (periodic == False):
+             self.Enuc = self.Enuc - delta/4
+
 
 
 def _squarefindneighbour(nx, ny, ix, iy, nn):
@@ -200,6 +208,9 @@ def _squarefindneighbour(nx, ny, ix, iy, nn):
         return neighbour
 
 
+
+
+
 class J1J2Square:
     """
     Square J1-J2 model
@@ -228,7 +239,166 @@ class J1J2Square:
                     vmat[i, j] = 0.5 * j2
 
         self.v = vmat
-        self.w = vmat
+        self.w = vmat*delta
+
+class XXZSquare:
+    
+
+    def __init__(self, nx, ny,delta, periodic=True):
+        
+        nmo = nx * ny
+        self.nmo = nmo
+        self.nelec = nmo
+        if not periodic:
+            print('J1J2 Square with OBC is not implemented yet.')
+            exit()
+        h_diag = -(0.5) * ones((nmo)) * 2.0
+
+        self.h_diag = h_diag*delta
+
+        vmat = zeros((nmo, nmo))
+        for ix in range(nx):
+            for iy in range(ny):
+                i = ix*ny + iy
+                # nearest neibour
+                for j in _squarefindneighbour(nx, ny, ix, iy, 1):
+                    vmat[i, j] = 0.5
+                
+
+        self.v = vmat
+        self.w = vmat*delta
+        self.Enuc = delta*2 * nmo/4              ## write the Enunc for 2D
+        if (periodic == False):
+             self.Enuc = self.Enuc
+
+
+
+def _triangular_findneighbour(nx, ny, ix, iy):
+    """Find nearest neighbours for a triangular lattice."""
+    neighbour = []
+
+    # Determine the neighbors based on even or odd row
+    if iy % 2 == 0:  # even row
+        potential_neighbours = [
+            (ix + 1, iy),     # right
+            (ix, iy + 1),     # top-right
+            (ix - 1, iy + 1), # top-left
+            (ix - 1, iy),     # left
+            (ix - 1, iy - 1), # bottom-left
+            (ix, iy - 1)      # bottom-right
+        ]
+    else:  # odd row
+        potential_neighbours = [
+            (ix + 1, iy),     # right
+            (ix + 1, iy + 1), # top-right
+            (ix, iy + 1),     # top-left
+            (ix - 1, iy),     # left
+            (ix, iy - 1),     # bottom-left
+            (ix + 1, iy - 1)  # bottom-right
+        ]
+
+    for jx, jy in potential_neighbours:
+        # Apply periodic boundary conditions
+        jx = jx % nx
+        jy = jy % ny
+        # Calculate the index
+        j = jx * ny + jy
+        neighbour.append(j)
+
+    return neighbour
+
+
+def _honeycomb_findneighbour(nx, ny, ix, iy):
+    """Find nearest neighbors for a honeycomb lattice."""
+    neighbour = []
+
+    # Determine if the point is on sub-lattice A or B
+    if (ix + iy) % 2 == 0:  # sub-lattice A
+        potential_neighbours = [
+            (ix + 1, iy),       # right
+            (ix, iy + 1),       # up-right
+            (ix - 1, iy + 1)    # up-left
+        ]
+    else:  # sub-lattice B
+        potential_neighbours = [
+            (ix - 1, iy),       # left
+            (ix, iy - 1),       # down-left
+            (ix + 1, iy - 1)    # down-right
+        ]
+
+    for jx, jy in potential_neighbours:
+        # Apply periodic boundary conditions
+        jx = jx % nx
+        jy = jy % ny
+        # Calculate the index
+        j = jx * ny + jy
+        neighbour.append(j)
+
+    return neighbour
+
+class XXZtriangular:
+    """
+    Square J1-J2 model
+    """
+
+    def __init__(self,delta, nx, ny, periodic=True):
+        nx = int(nx)
+        ny = int(ny)
+        nmo = nx * ny
+        self.nmo = nmo
+        self.nelec = nmo
+        if not periodic:
+            print('J1J2 Square with OBC is not implemented yet.')
+            exit()
+        h_diag = -(0.5) * ones((nmo)) * 3.0
+
+        self.h_diag = h_diag*delta
+
+        vmat = zeros((nmo, nmo))
+        for ix in range(nx):
+            for iy in range(ny):
+                i = ix*ny + iy
+                # nearest neibour
+                for j in _triangular_findneighbour(nx, ny, ix, iy):
+                    vmat[i, j] = 0.5
+
+
+        self.v = vmat
+        self.w = vmat*delta
+        
+        self.Enuc = delta*(6/8) * nmo              ## write the Enunc for 2D
+        if (periodic == False):
+             self.Enuc = self.Enuc
+
+class XXZhoneycomb:
+    """
+    Square J1-J2 model
+    """
+
+    def __init__(self,delta, nx, ny, periodic=True):
+        nx = int(nx)
+        ny = int(ny)
+        nmo = nx * ny
+        self.nmo = nmo
+        self.nelec = nmo
+        if not periodic:
+            print('J1J2 Square with OBC is not implemented yet.')
+            exit()
+        h_diag = -(0.5) * ones((nmo)) * 1.5
+
+        self.h_diag = h_diag*delta
+
+        vmat = zeros((nmo, nmo))
+        for ix in range(nx):
+            for iy in range(ny):
+                i = ix*ny + iy
+                # nearest neibour
+                for j in _honeycomb_findneighbour(nx, ny, ix, iy):
+                    vmat[i, j] = 0.5
+
+
+        self.v = vmat
+        self.w = vmat*delta
 
 
 class GeneralSeniorityZero:
@@ -245,4 +415,4 @@ class GeneralSeniorityZero:
         self.h_diag = one_body
 
         self.v = v
-        self.w = w
+        self.w = e
