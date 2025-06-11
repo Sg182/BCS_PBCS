@@ -72,6 +72,9 @@ class PBCS:
         y[:nocc] = cos(0.1)
         y[nocc:] = sqrt((nocc - cos(0.1)**2 * nocc) / (nmo - nocc))
         x = sqrt(1.0 - y * y)
+        if self.is_complex:
+            x = x * exp(2.0j * pi * rand(nmo))
+            y = y * exp(2.0j * pi * rand(nmo))
 
         return x, y
 
@@ -487,5 +490,4 @@ class PBCS:
         # print('d_norm', d_norm)
 
         return d_norm <= self.max_d_norm
-
 

@@ -1,4 +1,4 @@
-from numpy import finfo, sqrt, ones, zeros
+from numpy import finfo, sqrt, ones, zeros, argmax, abs
 from numpy.linalg import norm
 from cyipopt import Problem
 from .pbcs_ipopt import PBCS
@@ -69,19 +69,20 @@ class PairingChannel:
 
         return x, y, info
 
-    def run(self, x0=None, y0=None, is_from_complex=False,
+    def run(self, x0=None, y0=None, is_complex=False, is_from_complex=False,
             maxrun=None, maxiter=None, init_guess='thermal',
             bcs_only=False, tol=1e-7):
 
         pbcs = PBCS(self.hamilt, ngrid=self.ngrid, x=x0, y=y0,
-                    init_guess=init_guess, is_complex=is_from_complex,
+                    init_guess=init_guess,
+                    is_complex=(is_complex or is_from_complex),
                     bcs_only=bcs_only)
         self.pbcs = pbcs
 
         if maxrun is None:
             maxrun = self.maxrun
 
-        if is_from_complex:
+        if is_from_complex and not is_complex:
             for it_macro in range(maxrun):
                 x, y, info = self._optimize(maxiter=maxiter, tol=tol)
                 pbcs.x = x
@@ -92,7 +93,8 @@ class PairingChannel:
             ncycles = it_macro + 1
 
             eta_complex = self.eta
-            tmp = eta_complex[0]
+            idx = argmax(abs(eta_complex))
+            tmp = eta_complex[idx]
             phase_inv = tmp.conj() / abs(tmp)
             eta = phase_inv * eta_complex
             assert norm(eta.imag) < 1e-5
@@ -118,4 +120,3 @@ class PairingChannel:
                 break
 
         return x, y, info
-
