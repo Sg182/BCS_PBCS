@@ -430,57 +430,60 @@ class SFS_1D_XXZ:
 
         #build h110
 
+        h110 = np.zeros((nmo,nmo))
+
         if periodic:
-            I = np.eye(nmo)
-            Splus = np.roll(I, -1,axis=1)
-            Sminus = np.roll(I, -1,axis=1)
-            h110 = 0.5*(Splus + Sminus)
+            p = np.arange(nmo)
+            h110[p,(p+1)%nmo] += 0.5
+            h110[p,(p-1)%nmo] += 0.5
         else:
-            
-            h110 = 0.5 * (np.eye(L, k=1) + np.eye(L, k=-1))
+            p = np.arange(1,nmo-1)
+            h110[p,p+1] += 0.5
+            h110[p,p-1] += 0.5 
 
         
         #build h011
 
-        h011 = h110.copy()
+        h011 = h110
 
         #build h120
 
-        h120 = np.zeros(nmo,nmo,nmo)
+        h120 = np.zeros((nmo,nmo,nmo))
 
         if periodic:
             
             for p in range(nmo):
 
-                q = (p-1) % L
-                r = (p+1) % L
-                h120[p,q,r] += -0.5
+                q = (p-1) % nmo
+                r = (p+1) % nmo
+                h120[p,q,r] += -0.25
+                h120[p,r,q] += -0.25
 
         else:
 
             for p in range(1, nmo-1):
                 q = p-1
                 r = p+1
-                h120[p,q,r] += -0.5
+                h120[p,q,r] += -0.25
+                h120[p,r,q] += -0.25
 
        #build h021
 
-       h021 = np.zeros(nmo,nmo,nmo)
+        h021 = np.zeros((nmo,nmo,nmo))
 
         if periodic:
-
-            for r in range(nmo):
-
-                p = (r-1) % L
-                q = (r+1) % L
-                h021[p,q,r] += -0.5
+            for p in range(nmo):
+                r = (p-1) % nmo
+                q = (p+1) % nmo
+                h021[p,q,r] += -0.25
+                h021[q,p,r] += -0.25
 
         else:
-
-            for r in range(1, nmo-1):
-                p = r-1
-                q = r+1
-                h021[p,q,r] += -0.5
+            for p in range(1, nmo-1):
+                r = p-1
+                q = p+1
+                h021[p,q,r] += -0.25
+                h021[q,p,r] += -0.25
 
 
 
@@ -490,11 +493,21 @@ class SFS_1D_XXZ:
     
         if periodic:
             p = np.arange(nmo)
-            h020[p, (p+2) % nmo] = delta / 4.0
+            q = (p+2)%nmo
+            h020[p,q] = 0.125*delta
+            h020[q,p] = 0.125*delta
         else:
             if nmo >= 3:
-                p = np.arange(nmo-2)
-                h020[p, p+2] = delta/ 4.0
+                p = np.arange(nmo-2)                           #I am dividing by 1/2 to symmetrize h[p,q]
+                q = p+2
+                h020[p,q] = 0.125*delta           
+                h020[q,p] = 0.125*delta
+      
+      #build the scalar h000
+        if periodic:
+            h000 = delta*0.25*nmo
+        else:
+            h000 = delta*0.25*(nmo-1)
         
 
 
@@ -516,4 +529,3 @@ class GeneralSeniorityZero:
 
         self.v = v
         self.w = e
-
